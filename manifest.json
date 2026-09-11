@@ -1,0 +1,19 @@
+{
+  "name": "Mi Biblioteca",
+  "short_name": "Biblioteca",
+  "description": "Avisos y notificaciones de la biblioteca publica",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
