@@ -20,7 +20,7 @@ messaging.onBackgroundMessage(function(payload) {
     data: { url: payload.data && payload.data.url ? payload.data.url : '/' }
   };
   self.registration.showNotification(title, options);
-3:});
+});
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
