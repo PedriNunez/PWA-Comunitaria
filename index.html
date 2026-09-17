@@ -139,16 +139,80 @@ function unregisterTokenFromServer(token) {
     .catch(function() { currentToken = null; localStorage.removeItem('fcm_token'); updateNotifUI(); });
 }
 
+// Función para verificar el estado antes de pedir el permiso
+function checkNotificationPromise() {
+    try {
+        Notification.requestPermission().then();
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
 function enableNotifications() {
-  Notification.requestPermission().then(function(permission) {
-    if (permission === 'granted') {
-      var opts = { vapidKey: VAPID_KEY };
-      if (swReg) opts.serviceWorkerRegistration = swReg;
-      messaging.getToken(opts)
-        .then(function(token) { if (token) registerTokenOnServer(token); else showToast('No se pudo obtener token', 'err'); })
-        .catch(function(err) { console.error('getToken error:', err); showToast('Error al obtener token', 'err'); });
-    } else { showToast('Permiso denegado', 'err'); }
-  });
+    // 1. Verificar si el navegador soporta notificaciones
+    if (!('Notification' in window)) {
+        showToast('Tu dispositivo no soporta notificaciones', 'err');
+        return;
+    }
+
+    // 2. Verificar si ya está bloqueado (denied)
+    if (Notification.permission === 'denied') {
+        showToast('Notificaciones bloqueadas. Actívalas en los ajustes de tu navegador.', 'err');
+        // Aquí podrías abrir un modal explicando cómo desbloquear en Chrome/Safari
+        return;
+    }
+
+    // 3. Si el permiso ya fue concedido pero no hay token, obtenemos el token directamente
+    if (Notification.permission === 'granted') {
+        getFcmToken();
+        return;
+    }
+
+    // 4. Pedir el permiso por primera vez
+    // Usamos la función basada en promesas si está disponible
+    var promise = Notification.requestPermission();
+    if (promise instanceof Promise) {
+        promise.then(function(permission) {
+            if (permission === 'granted') {
+                getFcmToken();
+            } else {
+                showToast('Permiso denegado. No podrás recibir avisos.', 'err');
+            }
+        });
+    } else {
+        // Fallback para navegadores antiguos
+        Notification.requestPermission(function(permission) {
+            if (permission === 'granted') {
+                getFcmToken();
+            }
+        });
+    }
+}
+
+// Separamos la obtención del token para no repetir código
+function getFcmToken() {
+    var opts = { vapidKey: VAPID_KEY };
+    if (swReg) opts.serviceWorkerRegistration = swReg;
+    
+    messaging.getToken(opts)
+        .then(function(token) { 
+            if (token) {
+                registerTokenOnServer(token); 
+            } else {
+                showToast('No se pudo obtener token. ¿Estás en modo incógnito?', 'err'); 
+            }
+        })
+        .catch(function(err) { 
+            console.error('getToken error:', err); 
+            if (err.code === 'messaging/permission-blocked') {
+                showToast('Permiso bloqueado en ajustes del navegador', 'err');
+            } else if (err.code === 'messaging/unsupported-browser') {
+                showToast('Navegador no soportado (¿iOS sin instalar la app?)', 'err');
+            } else {
+                showToast('Error al obtener token: ' + err.code, 'err');
+            }
+        });
 }
 
 function disableNotifications() {
